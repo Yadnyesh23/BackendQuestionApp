@@ -1,5 +1,6 @@
  ## /api/questions/:id 
  ```
+ {
 title: "System Design Incident: The Duplicate Charge",
     slug: "duplicate-charge-payment-system",
     context: "Payment API /api/v1/payments",
@@ -362,4 +363,5 @@ title: "System Design Incident: The Duplicate Charge",
         ]
       }
     }
+ }
  ```
