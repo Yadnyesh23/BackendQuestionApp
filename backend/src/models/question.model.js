@@ -9,22 +9,16 @@ const optionSchema = new mongoose.Schema({
 
 /* ---------- Phase 3 Architecture Schemas ---------- */
 
-const subOptionSchema = new mongoose.Schema({
+const archItemSchema = new mongoose.Schema({
   id: String,
-  title: String,
-  description: String
+  desc: String
 });
 
-const architectureOptionSchema = new mongoose.Schema({
-  id: String,
-  title: String,
-  description: String,
-  suboptions: [subOptionSchema]
-});
-
-const architectureLayerSchema = new mongoose.Schema({
-  layer: String,
-  options: [architectureOptionSchema]
+const archSectionSchema = new mongoose.Schema({
+  key: String,
+  label: String,
+  desc: String,
+  items: [archItemSchema]
 });
 
 /* ---------- Main Question Schema ---------- */
@@ -69,7 +63,8 @@ const questionSchema = new mongoose.Schema(
 
       phase3: {
         title: String,
-        architecture_layers: [architectureLayerSchema]
+        description: String,
+        archSections: [archSectionSchema]
       },
 
       phase4: {

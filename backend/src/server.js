@@ -15,9 +15,8 @@ app.use(express.json());
 const PORT = process.env.PORT || 5000
 
 // Routes
-import adminRoutes from './routes/admin.route.js'
 import questionRoutes from './routes/questions.route.js'
-app.use('/api', adminRoutes)
+
 app.use("/api", questionRoutes);
 
 // Connect DB

@@ -1,367 +1,158 @@
- ## /api/questions/:id 
- ```
- {
-title: "System Design Incident: The Duplicate Charge",
-    slug: "duplicate-charge-payment-system",
-    context: "Payment API /api/v1/payments",
-    core_issue:
-      "Lack of idempotency leading to multiple charges for a single user intent.",
-    scenario:
-      "Users retry payment requests during slow networks or timeouts, which results in the payment API processing the same request multiple times and charging the customer more than once.",
-    category: "system-design",
-    difficulty: "hard",
-    tags: ["payments", "idempotency", "distributed-systems"],
+# Backend Questions API
 
-    phases: {
-      phase1: {
-        question:
-          "What is your immediate move to stabilize the system and prevent further duplicates?",
-        options: [
+This API provides access to backend and system design questions, organized by difficulty, category, and phases. It is useful for learning, interviews, and testing your understanding of distributed systems and architecture.
+
+---
+
+## **API Endpoints**
+
+### 1. Get All Questions
+
+**Endpoint:** `GET /api/questions`  
+**Description:** Fetch a paginated list of all questions.
+
+**Example Response:**
+
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "data": {
+    "total": 5,
+    "page": 1,
+    "limit": 10,
+    "questions": [
+      {
+        "_id": "69ad52a3d01bf04853ac05bd",
+        "title": "The Login Storm Outage",
+        "slug": "login-storm-outage",
+        "core_issue": "Scalability and traffic spikes—thundering herd of users overwhelming CPU (password hashing) and DB (connection exhaustion).",
+        "category": "system-design",
+        "difficulty": "hard",
+        "tags": ["auth","scalability","rate-limiting","load-shedding","thundering-herd"]
+      },
+      {
+        "_id": "69ad52a3d01bf04853ac057e",
+        "title": "The Follower Count Chaos",
+        "slug": "follower-count-chaos",
+        "core_issue": "Concurrency and race conditions leading to duplicate follow relationships and incorrect follower counters.",
+        "category": "system-design",
+        "difficulty": "medium",
+        "tags": ["social-graph","concurrency","race-condition","distributed-systems"]
+      }
+      // ...more questions
+    ]
+  },
+  "message": "Questions fetched successfully"
+}
+```
+
+### 2. Get a Question By ID
+
+**Endpoint:** `GET /api/questions/:id`  
+**Description:** Fetch detailed information for a single question, including all phases and options
+
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "data": {
+    "_id": "69ad52a3d01bf04853ac05a8",
+    "title": "The Stale Product Price Issue",
+    "slug": "stale-product-price-issue",
+    "context": "E-commerce Product Service /api/v1/products/{id}",
+    "core_issue": "Cache Invalidation—the cache is not synchronized with the database, causing stale product prices.",
+    "scenario": "Your system caches product details in Redis to speed up GET /api/v1/products/{id}. After updating the price in the admin panel, customers continue seeing the old price for several minutes.",
+    "category": "system-design",
+    "difficulty": "hard",
+    "tags": ["cache-invalidation","ecommerce","redis","distributed-systems"],
+    "phases": {
+      "phase1": {
+        "question": "What is your immediate move to ensure customers see the correct price during a flash sale or update?",
+        "options": [
           {
-            id: "A",
-            title: "Rate-limit the Endpoint",
-            logic:
-              "Reject requests from the same user if they exceed 1 request per 10 seconds."
+            "id": "A",
+            "title": "Reduce TTL (Time-to-Live)",
+            "logic": "Shorten the cache expiration from 10 minutes to 30 seconds to minimize the stale window.",
+            "description": "Reduces stale data window but may increase DB load."
           },
           {
-            id: "B",
-            title: "Client-side Debouncing",
-            logic:
-              "Disable the payment button after the first click to prevent double taps."
-          },
-          {
-            id: "C",
-            title: "Server-side Idempotency",
-            logic:
-              "Require an Idempotency-Key header. If the same key is seen again, return the cached response instead of processing the payment again."
-          },
-          {
-            id: "D",
-            title: "Database Unique Constraints",
-            logic:
-              "Use a unique index on order_id or transaction_id to block duplicate writes."
+            "id": "B",
+            "title": "Active Cache Invalidation (The 'Purge')",
+            "logic": "Modify the Admin service to explicitly delete the Redis key product:{id} whenever a price change is saved.",
+            "description": "Ensures cache is up-to-date immediately after a DB write."
           }
         ]
       },
-
-      phase2: {
-        A: [
+      "phase2": {
+        "A": [
           {
-            id: "A1",
-            title: "Global Redis Counter",
-            description:
-              "Track request frequency across all server nodes using a centralized Redis cache."
+            "id": "A1",
+            "title": "Static TTL",
+            "description": "Set a hard 30-second TTL for all products."
           },
           {
-            id: "A2",
-            title: "Local In-Memory Buckets",
-            description:
-              "Apply rate limiting per server instance. Faster but inaccurate for distributed traffic."
+            "id": "A2",
+            "title": "Adaptive TTL",
+            "description": "Use shorter TTLs for high-velocity items (sale items) and longer TTLs for static items."
           }
         ],
-        B: [
+        "B": [
           {
-            id: "B1",
-            title: "Hard Disable Button",
-            description:
-              "Disable the button until a response is received or a timeout occurs."
+            "id": "B1",
+            "title": "Synchronous Delete",
+            "description": "The Admin API waits for Redis to confirm deletion before telling the admin 'Success.'"
           },
           {
-            id: "B2",
-            title: "Processing Confirmation Modal",
-            description:
-              "Display a modal that prevents further user interaction while the request processes."
-          }
-        ],
-        C: [
-          {
-            id: "C1",
-            title: "Distributed Locking",
-            description:
-              "Use Redis Redlock to lock the idempotency key while the first request is processed."
-          },
-          {
-            id: "C2",
-            title: "Persistence-based Validation",
-            description:
-              "Store the idempotency key in a database table before calling the payment provider."
-          }
-        ],
-        D: [
-          {
-            id: "D1",
-            title: "Strict Error Handling",
-            description:
-              "Attempt insert and catch the UniqueViolation error to return an 'Already Processed' response."
-          },
-          {
-            id: "D2",
-            title: "Upsert (ON CONFLICT)",
-            description:
-              "Use ON CONFLICT DO NOTHING to ignore duplicate writes silently."
+            "id": "B2",
+            "title": "Asynchronous Invalidation",
+            "description": "The Admin API emits an 'Update Event' to a message queue; a worker then clears the cache."
           }
         ]
       },
-
-     phase3: {
-  title: "Architectural Evolution",
-  architecture_layers: [
-    {
-      layer: "Traffic Handling & Orchestration",
-      options: [
-        {
-          id: "TH1",
-          title: "Load Balancer",
-          description: "Distributes incoming requests across multiple servers.",
-          suboptions: [
-            {
-              id: "TH1A",
-              title: "Round Robin",
-              description: "Simple traffic distribution across backend servers."
-            },
-            {
-              id: "TH1B",
-              title: "Least Connections",
-              description: "Send traffic to the server with the fewest active connections."
-            }
-          ]
-        },
-        {
-          id: "TH2",
-          title: "API Gateway",
-          description: "Central entry point for all clients.",
-          suboptions: [
-            {
-              id: "TH2A",
-              title: "Authentication Middleware",
-              description: "Validate JWT or OAuth tokens."
-            },
-            {
-              id: "TH2B",
-              title: "Rate Limiting",
-              description: "Protect APIs from abuse or DDoS attacks."
-            }
-          ]
-        },
-        {
-          id: "TH3",
-          title: "Service Mesh",
-          description: "Manages service-to-service communication.",
-          suboptions: [
-            {
-              id: "TH3A",
-              title: "Circuit Breaker",
-              description: "Prevent cascading failures if a service goes down."
-            },
-            {
-              id: "TH3B",
-              title: "Retry Policies",
-              description: "Retry failed service calls automatically."
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      layer: "Processing & Business Logic",
-      options: [
-        {
-          id: "PB1",
-          title: "Web Servers",
-          description: "Handle HTTP requests.",
-          suboptions: [
-            {
-              id: "PB1A",
-              title: "Nginx",
-              description: "High performance reverse proxy server."
-            },
-            {
-              id: "PB1B",
-              title: "Apache",
-              description: "Traditional web server."
-            }
-          ]
-        },
-        {
-          id: "PB2",
-          title: "Application Server",
-          description: "Runs the core business logic.",
-          suboptions: [
-            {
-              id: "PB2A",
-              title: "Node.js Services",
-              description: "Event-driven backend runtime."
-            },
-            {
-              id: "PB2B",
-              title: "Go Microservices",
-              description: "High performance services."
-            }
-          ]
-        },
-        {
-          id: "PB3",
-          title: "Asynchronous Workers",
-          description: "Handle background jobs.",
-          suboptions: [
-            {
-              id: "PB3A",
-              title: "Kafka",
-              description: "High throughput event streaming."
-            },
-            {
-              id: "PB3B",
-              title: "RabbitMQ",
-              description: "Reliable job queue."
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      layer: "Data Integrity & Persistence",
-      options: [
-        {
-          id: "DP1",
-          title: "Relational Database",
-          description: "ACID-compliant storage.",
-          suboptions: [
-            {
-              id: "DP1A",
-              title: "PostgreSQL",
-              description: "Strong consistency relational database."
-            },
-            {
-              id: "DP1B",
-              title: "MySQL",
-              description: "Widely used relational database."
-            }
-          ]
-        },
-        {
-          id: "DP2",
-          title: "NoSQL Database",
-          description: "Horizontally scalable storage.",
-          suboptions: [
-            {
-              id: "DP2A",
-              title: "MongoDB",
-              description: "Document-based database."
-            },
-            {
-              id: "DP2B",
-              title: "Cassandra",
-              description: "Highly distributed database."
-            }
-          ]
-        },
-        {
-          id: "DP3",
-          title: "Caching Layer",
-          description: "Store frequently accessed data.",
-          suboptions: [
-            {
-              id: "DP3A",
-              title: "Redis",
-              description: "In-memory cache for fast reads."
-            },
-            {
-              id: "DP3B",
-              title: "Memcached",
-              description: "Distributed memory caching system."
-            }
-          ]
-        }
-      ]
-    },
-
-    {
-      layer: "Security & Observability",
-      options: [
-        {
-          id: "SO1",
-          title: "Identity Provider",
-          description: "Manages authentication and authorization.",
-          suboptions: [
-            {
-              id: "SO1A",
-              title: "OAuth2",
-              description: "Standard authorization framework."
-            },
-            {
-              id: "SO1B",
-              title: "JWT",
-              description: "Stateless authentication tokens."
-            }
-          ]
-        },
-        {
-          id: "SO2",
-          title: "Logging & Monitoring",
-          description: "Track system health and errors.",
-          suboptions: [
-            {
-              id: "SO2A",
-              title: "Prometheus",
-              description: "Metrics monitoring system."
-            },
-            {
-              id: "SO2B",
-              title: "ELK Stack",
-              description: "Centralized logging system."
-            }
-          ]
-        },
-        {
-          id: "SO3",
-          title: "Content Delivery Network",
-          description: "Cache static assets geographically.",
-          suboptions: [
-            {
-              id: "SO3A",
-              title: "Cloudflare",
-              description: "Global CDN network."
-            },
-            {
-              id: "SO3B",
-              title: "AWS CloudFront",
-              description: "AWS edge distribution network."
-            }
-          ]
-        }
-      ]
-    }
-  ]
-},
-
-      phase4: {
-        instruction:
-          "Explain the trade-offs of your selected architecture decisions and why they best solve the duplicate charge issue."
+      "phase3": {
+        "title": "Architectural Evolution",
+        "description": "To manage millions of products with zero price-lag, the following changes are required:",
+        "archSections": [
+          {
+            "key": "cdc",
+            "label": "Change Data Capture (CDC)",
+            "desc": "Listen to database transaction logs. As soon as a row changes, trigger cache eviction.",
+            "items": [
+              { "id": "Debezium Listener", "desc": "Automatically detects DB changes and signals cache invalidation." }
+            ]
+          },
+          {
+            "key": "cache-aside",
+            "label": "Cache-Aside Pattern with Invalidation",
+            "desc": "Read: Check Cache → Miss → Read DB → Populate Cache. Update: Update DB → Evict Cache Key.",
+            "items": [
+              { "id": "Read Path", "desc": "Always check cache first and fallback to DB on miss." },
+              { "id": "Write Path", "desc": "Evict cache immediately after updating the DB to prevent stale reads." }
+            ]
+          }
+        ]
       },
-
-      phase5: {
-        intent:
-          "The interviewer wants to evaluate whether the candidate understands how distributed systems prevent duplicate financial transactions.",
-        context:
-          "Payment APIs must guarantee that one user intent results in exactly one charge even if requests are retried.",
-        weak_signals: [
-          "Only suggesting frontend fixes.",
-          "Using rate limiting as the primary solution for data integrity."
+      "phase4": { "instruction": "Explain trade-offs and reasoning behind your solution." },
+      "phase5": {
+        "intent": "Evaluate understanding of cache invalidation and high-scale architecture.",
+        "weak_signals": [
+          "Relying solely on short TTLs",
+          "Ignoring race conditions on cache updates"
         ],
-        recommended_solution: [
-          "Implement server-side idempotency keys.",
-          "Store request and response with idempotency keys.",
-          "Use atomic database transactions.",
-          "Maintain payment state machines."
+        "recommended_solution": [
+          "Active cache invalidation",
+          "Two-tier caching",
+          "Change Data Capture",
+          "Versioned cache keys"
         ],
-        followup_questions: [
-          "How would you handle a server crash after the payment gateway confirms the charge?",
-          "Where would you store idempotency keys for high scalability?",
-          "How long should idempotency keys persist?"
+        "followup_questions": [
+          "How would you prevent a cache stampede during a flash sale?",
+          "When is write-through better than cache-aside?"
         ]
       }
-    }
- }
- ```
+    },
+    "message": "Question fetched successfully"
+  }
+}
+```

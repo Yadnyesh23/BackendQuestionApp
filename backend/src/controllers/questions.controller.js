@@ -66,24 +66,7 @@ const getQuestionById = asyncHandler(async (req, res) => {
 });
 
 
-const getQuestionFilters = asyncHandler(async (req, res) => {
-
-    const categories = await Question.distinct("category");
-    const difficulties = await Question.distinct("difficulty");
-    const tags = await Question.distinct("tags");
-
-    return res.status(200).json(
-        new ApiResponse(200, {
-            categories,
-            difficulties,
-            tags
-        }, "Filters fetched successfully")
-    );
-
-});
-
 export {
     getAllQuestions,
     getQuestionById,
-    getQuestionFilters
 };

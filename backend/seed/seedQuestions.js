@@ -1,30 +1,32 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import Question from "../models/Question.js";
-import questions from "../src/data/questions.js";
+import Question from "../src/models/question.model.js";
+import questions from "./questions.js";
 
 dotenv.config();
 
 const seedQuestions = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ Connected to MongoDB");
 
-    console.log("MongoDB Connected");
+    await Question.deleteMany({});
+    console.log("🗑 Cleared existing questions");
 
-    // Clear existing data
-    await Question.deleteMany();
+    // Add unique `id` to each question to satisfy unique index
+    const questionsWithId = questions.map((q, idx) => ({
+      ...q,
+      id: idx + 1, // simple numeric unique id
+    }));
 
-    console.log("Old Questions Deleted");
+    await Question.insertMany(questionsWithId);
+    console.log(`✅ Inserted ${questionsWithId.length} questions`);
 
-    // Insert new questions
-    await Question.insertMany(questions);
-
-    console.log("Questions Seeded Successfully");
-
-    process.exit();
+    mongoose.connection.close();
+    console.log("🔒 Connection closed");
   } catch (error) {
-    console.error(error);
-    process.exit(1);
+    console.error("❌ Error seeding questions:", error);
+    mongoose.connection.close();
   }
 };
 
